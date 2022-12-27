@@ -2,3 +2,4 @@ node_modules
 hardhat.config.js
 package.json
 yarn.lock
+package-lock.json
