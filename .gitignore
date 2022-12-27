@@ -1,4 +1,5 @@
 node_modules
+scripts
 hardhat.config.js
 package.json
 yarn.lock
