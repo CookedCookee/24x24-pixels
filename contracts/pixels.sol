@@ -14,10 +14,10 @@ contract pixels {
 
     //events
 
-    //constructor
     constructor() {
-
     }
 
-    //functions
+    function drawImage() external pure returns (string memory) {
+        return "";
+    }
 }

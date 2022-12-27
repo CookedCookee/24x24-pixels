@@ -6,3 +6,4 @@ hardhat.config.js
 package.json
 yarn.lock
 package-lock.json
+.DS_Store
