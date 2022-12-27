@@ -15,6 +15,9 @@ contract pixels {
     //events
 
     //constructor
+    constructor() {
+
+    }
 
     //functions
 }
