@@ -5,7 +5,7 @@ import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 
-contract fiveHundredAndSeventySixPixels {
+contract FiveHundredAndSeventySixPixels {
     using SafeMath for uint256;
 
     struct coordinates {
@@ -20,16 +20,14 @@ contract fiveHundredAndSeventySixPixels {
         string[] colours;
     }
 
-    mapping(address => bytes32[]) public userTemplates;
-
-    //Not sure if this is necessary
-    //mapping(address => uint256) public numberOfUsersTemplates;
-
     mapping(bytes32 => template) public templates;
 
     mapping(bytes32 => bool) public templateExists;
 
-    //events
+    bytes32[] public templateList;
+
+    event templateCreated(bytes32 indexed keyHash, address indexed author);
+    event templateDeleted(bytes32 indexed keyHash, address indexed author);
 
     constructor() {
     }
@@ -37,10 +35,12 @@ contract fiveHundredAndSeventySixPixels {
     function createTemplate(string memory _name, uint256[] memory _positions, string[] memory _colours) external {
         bytes32 keyHash = keccak256(abi.encodePacked(_name, msg.sender));
 
-        require(templateExists[keyHash] == false, "Template already exists");
-        require(_positions.length < 576 && _colours.length < 576, "Too many pixels");
+        require(!templateExists[keyHash], "Template already exists");
+        require(_positions.length > 0, "Insuffient pixels");
+        require(_positions.length < 576, "Too many pixels");
         require(_positions.length == _colours.length, "Positions and Colours array must be the same length");
 
+        //Maybe delete for gas purposes
         for (uint256 i=0; i<_positions.length; i++) {
             require(_positions[i] < 576, string.concat('Invalid pixel location in index #', Strings.toString(i)));
         }
@@ -51,14 +51,26 @@ contract fiveHundredAndSeventySixPixels {
         newTemplate.positions = _positions;
         newTemplate.colours = _colours;
 
-        userTemplates[msg.sender].push(keyHash);
+        templateList.push(keyHash);
         templates[keyHash] = newTemplate;
         templateExists[keyHash] = true;
 
-        //emit event
+        emit templateCreated(keyHash, msg.sender);
     }
 
-    function deleteTemplate(bytes32 _template) external {
+    function deleteTemplate(uint256 _index, bytes32 _template) external {
+        require(templateExists[_template], "Template doesn't exist");
+        require(templateList[_index] == _template, "Index does not correspond to template");
+        require(templates[_template].author == msg.sender, "Only the author can delete this template");
+
+        template memory emptyTemplate;
+
+        templateList[_index] = templateList[templateList.length - 1];
+        templateList.pop();
+        templates[_template] = emptyTemplate;
+        templateExists[_template] = false;
+
+        emit templateDeleted(_template, msg.sender);
     }
 
     function overlayer(string[576] memory _base, bytes32[] memory _templates) public view returns (string[576] memory) {
@@ -87,6 +99,18 @@ contract fiveHundredAndSeventySixPixels {
         }
 
         return monochrome;
+    }
+
+    function getRandomisedPixelsArrayWithTemplate(bytes32 _template) public view returns (string[576] memory) {
+        string[576] memory random;
+
+        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, _template, block.gaslimit)));
+
+        for (uint256 i=0; i<576; i++) {
+            random[i] = templates[_template].colours[((i+seed)*seed) % templates[_template].colours.length];
+        }
+
+        return random;
     }
 
     //main draw functions

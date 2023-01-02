@@ -14,7 +14,7 @@ describe("Pixels Testing", function () {
         const [owner, addy0, addy1] = await ethers.getSigners();
 
         //Deploy Pixels
-        const Pixels = await ethers.getContractFactory("fiveHundredAndSeventySixPixels");
+        const Pixels = await ethers.getContractFactory("FiveHundredAndSeventySixPixels");
         const deployedPixels = await Pixels.deploy();
 
         return { 
