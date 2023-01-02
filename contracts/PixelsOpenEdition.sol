@@ -13,23 +13,17 @@ contract PixelsOpenEdition is Ownable, ERC721, ReentrancyGuard {
     using SafeMath for uint256;
 
     IFiveHundredAndSeventySixPixels public fiveHundredAndSeventySixPixels;
-
     uint256 public nonce;
-
     uint256 public fee;
-
     mapping(uint256 => address) public minter;
-
     mapping(uint256 => string[576]) public pixels;
-
     mapping(uint256 => string) public memo;
 
     event Minted(uint256 indexed tokenId);
-
     event WithdrawETH(uint256 indexed amount);
 
-    constructor(IFiveHundredAndSeventySixPixels _fiveHundredAndSeventySixPixels) ERC721("Pixels Open Edition", "POE") {
-        transferOwnership(0xc37AEDFd7cC5d2f8Cf04885077555ff4524CF726);
+    constructor(address _owner, IFiveHundredAndSeventySixPixels _fiveHundredAndSeventySixPixels) ERC721("Pixels Open Edition", "POE") {
+        transferOwnership(_owner);
         fiveHundredAndSeventySixPixels = _fiveHundredAndSeventySixPixels;
         fee = 0.001e18 wei;
     }

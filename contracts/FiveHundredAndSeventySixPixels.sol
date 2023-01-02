@@ -4,14 +4,10 @@ pragma solidity 0.8.17;
 import {SafeMath} from "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract FiveHundredAndSeventySixPixels {
+contract FiveHundredAndSeventySixPixels is ReentrancyGuard {
     using SafeMath for uint256;
-
-    struct coordinates {
-        uint256 x;
-        uint256 y;
-    }
 
     struct template {
         string name;
@@ -20,11 +16,9 @@ contract FiveHundredAndSeventySixPixels {
         string[] colours;
     }
 
-    mapping(bytes32 => template) public templates;
-
-    mapping(bytes32 => bool) public templateExists;
-
     bytes32[] public templateList;
+    mapping(bytes32 => template) public templates;
+    mapping(bytes32 => bool) public templateExists;
 
     event templateCreated(bytes32 indexed keyHash, address indexed author);
     event templateDeleted(bytes32 indexed keyHash, address indexed author);
@@ -32,7 +26,7 @@ contract FiveHundredAndSeventySixPixels {
     constructor() {
     }
 
-    function createTemplate(string memory _name, uint256[] memory _positions, string[] memory _colours) external {
+    function createTemplate(string memory _name, uint256[] memory _positions, string[] memory _colours) external nonReentrant {
         bytes32 keyHash = keccak256(abi.encodePacked(_name, msg.sender));
 
         require(!templateExists[keyHash], "Template already exists");
@@ -58,7 +52,7 @@ contract FiveHundredAndSeventySixPixels {
         emit templateCreated(keyHash, msg.sender);
     }
 
-    function deleteTemplate(uint256 _index, bytes32 _template) external {
+    function deleteTemplate(uint256 _index, bytes32 _template) external nonReentrant {
         require(templateExists[_template], "Template doesn't exist");
         require(templateList[_index] == _template, "Index does not correspond to template");
         require(templates[_template].author == msg.sender, "Only the author can delete this template");
@@ -71,6 +65,16 @@ contract FiveHundredAndSeventySixPixels {
         templateExists[_template] = false;
 
         emit templateDeleted(_template, msg.sender);
+    }
+    
+    function getMonochromePixelsArray(string memory _colour) public pure returns (string[576] memory) {
+        string[576] memory monochrome;
+
+        for (uint256 i=0; i<576; i++) {
+            monochrome[i] = _colour;
+        }
+
+        return monochrome;
     }
 
     function overlayer(string[576] memory _base, bytes32[] memory _templates) public view returns (string[576] memory) {
@@ -89,42 +93,6 @@ contract FiveHundredAndSeventySixPixels {
         }
 
         return result;
-    }
-    
-    function getMonochromePixelsArray(string memory _colour) public pure returns (string[576] memory) {
-        string[576] memory monochrome;
-
-        for (uint256 i=0; i<576; i++) {
-            monochrome[i] = _colour;
-        }
-
-        return monochrome;
-    }
-
-    function getRandomisedPixelsArrayWithTemplate(bytes32 _template) public view returns (string[576] memory) {
-        string[576] memory random;
-
-        uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, _template, block.gaslimit)));
-
-        for (uint256 i=0; i<576; i++) {
-            random[i] = templates[_template].colours[((i+seed)*seed) % templates[_template].colours.length];
-        }
-
-        return random;
-    }
-
-    //main draw functions
-
-    function draw(string[576] memory _pixels, bool _encode) external pure returns (string memory) {
-        string memory svgHTML = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 24 24">';
-        svgHTML = string.concat(svgHTML, generateSVG(_pixels));
-        svgHTML = string.concat(svgHTML, '</svg>');
-
-        if (_encode) {
-            svgHTML = string.concat('data:image/svg+xml;base64,', Base64.encode(bytes(svgHTML)));   
-        }
-
-        return svgHTML;
     }
 
     function generateSVG(string[576] memory _pixels) public pure returns (string memory) {
@@ -151,26 +119,15 @@ contract FiveHundredAndSeventySixPixels {
         return svgHTML;
     }
 
-    //Helper functions for navigating the pixels array
+    function draw(string[576] memory _pixels, bool _encode) external pure returns (string memory) {
+        string memory svgHTML = '<svg xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMinYMin meet" viewBox="0 0 24 24">';
+        svgHTML = string.concat(svgHTML, generateSVG(_pixels));
+        svgHTML = string.concat(svgHTML, '</svg>');
 
-    function positionToCoordinates(uint256 _position) public pure returns (coordinates memory) {
-        require(_position < 576, "Invalid position");
+        if (_encode) {
+            svgHTML = string.concat('data:image/svg+xml;base64,', Base64.encode(bytes(svgHTML)));   
+        }
 
-        coordinates memory coords;
-
-        coords.x = _position%24;
-        coords.y = _position/24;
-
-        return coords;
-    }
-
-    function coordinatesToPosition(coordinates memory _coords) public pure returns (uint256) {
-        require(_coords.x < 24 && _coords.y < 24, "Invalid coordinates");
-
-        uint256 position;
-
-        position = (24 * _coords.y) + _coords.x;
-
-        return position;
+        return svgHTML;
     }
 }
