@@ -1,2 +1,2 @@
-# 24x24-pixels
-A generalised on-chain 24x24 svg pixel generator
+# Pixels On Chain
+A generalised on-chain 24x24 svg pixel generator and repository

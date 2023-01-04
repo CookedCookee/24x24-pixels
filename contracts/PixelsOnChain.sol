@@ -6,7 +6,10 @@ import {Base64} from "@openzeppelin/contracts/utils/Base64.sol";
 import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract FiveHundredAndSeventySixPixels is ReentrancyGuard {
+/// @title  Pixels On Chain
+/// @author Cooki.eth
+/// @notice This contract is generalised on-chain 24x24 svg pixel generator and repository.
+contract PixelsOnChain is ReentrancyGuard {
     using SafeMath for uint256;
 
     struct template {
@@ -23,9 +26,6 @@ contract FiveHundredAndSeventySixPixels is ReentrancyGuard {
     event templateCreated(bytes32 indexed keyHash, address indexed author);
     event templateDeleted(bytes32 indexed keyHash, address indexed author);
 
-    constructor() {
-    }
-
     function createTemplate(string memory _name, uint256[] memory _positions, string[] memory _colours) external nonReentrant {
         bytes32 keyHash = keccak256(abi.encodePacked(_name, msg.sender));
 
@@ -34,7 +34,6 @@ contract FiveHundredAndSeventySixPixels is ReentrancyGuard {
         require(_positions.length < 576, "Too many pixels");
         require(_positions.length == _colours.length, "Positions and Colours array must be the same length");
 
-        //Maybe delete for gas purposes
         for (uint256 i=0; i<_positions.length; i++) {
             require(_positions[i] < 576, string.concat('Invalid pixel location in index #', Strings.toString(i)));
         }
@@ -87,7 +86,6 @@ contract FiveHundredAndSeventySixPixels is ReentrancyGuard {
             temp = templates[_templates[a]];
 
             for (uint256 b=0; b<temp.positions.length; b++) {
-
                 result[temp.positions[b]] = temp.colours[b];
             }
         }
@@ -129,5 +127,27 @@ contract FiveHundredAndSeventySixPixels is ReentrancyGuard {
         }
 
         return svgHTML;
+    }
+
+    /// @notice This function allows for an easy way of seeing the number of templates stored in this registry.
+    /// @return uint256 The length of the templateList array.
+    function getTemplateListLength() external view returns (uint256) {
+        return templateList.length;
+    }
+
+    /// @notice This function allows for an easy way of seeing the colours array of any given template.
+    /// @param _template The key hash of the template.
+    /// @return string[] The colours array of the template.
+    function getTemplateColoursArray(bytes32 _template) external view returns (string[] memory) {
+        require(templateExists[_template], "Template doesn't exist");
+        return templates[_template].colours;
+    }
+
+    /// @notice This function allows for an easy way of seeing the positions array of any given template.
+    /// @param _template The key hash of the template.
+    /// @return uint256[] The positions array of the template.
+    function getTemplatePositionsArray(bytes32 _template) external view returns (uint256[] memory) {
+        require(templateExists[_template], "Template doesn't exist");
+        return templates[_template].positions;
     }
 }
