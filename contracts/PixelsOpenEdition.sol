@@ -9,18 +9,52 @@ import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IPixelsOnChain} from "../contracts/IPixelsOnChain.sol";
 
+/// @title  Pixels On Chain: Open Edition
+/// @author Cooki.eth
+/// @notice This contract utilisies and extends the utility enabled by the Pixels On Chain registry by 
+///         turning the images into NFTs. Users can mint an NFT by passing an array of pixels and a memo
+///         to the mint function. The NFT will then be created on-chain using the Pixels On Chain registry
+///         in the Opensea format. Minting will remain open forever; therere is no upper bound on the number
+///         of NFTs available to mint. Mint cost is 0.001 ETH and 1% of royalties are returned to the owner.
+///         No further utility will be provided after minting. 
 contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     using SafeMath for uint256;
 
+    /////////////
+    //Variables//
+    /////////////
+
+    /// @notice The Pixels On Chain registry.
     IPixelsOnChain public pixelsOnChain;
+
+    /// @notice The number of NFTs that have been minted.
     uint256 public nonce;
+
+    /// @notice The mint fee, which is 0.001 ETH.
     uint256 public fee;
+
+    /// @notice A mapping from token IDs to minting addresses.
     mapping(uint256 => address) public minter;
+
+    /// @notice A mapping from token IDs to pixels array.
     mapping(uint256 => string[576]) public pixels;
+
+    /// @notice A mapping from token IDs to memo of the NFT.
     mapping(uint256 => string) public memo;
 
+    //////////
+    //Events//
+    //////////
+
+    /// @notice The token ID of an NFT when it is minted.
     event Minted(uint256 indexed tokenId);
+
+    /// @notice The amount of ETH withdrawn by the owner when the withdraw function is called.
     event WithdrawETH(uint256 indexed amount);
+
+    ///////////////
+    //Constructor//
+    ///////////////
 
     constructor(address _owner, IPixelsOnChain _pixelsOnChain) ERC721("Pixels On Chain", "POC") {
         transferOwnership(_owner);
@@ -28,6 +62,13 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
         fee = 0.001e18 wei;
     }
 
+    //////////////////
+    //Core Functions//
+    //////////////////
+
+    /// @notice This function allows anyone to mint an NFT.
+    /// @param _pixels The pixels array of colours.
+    /// @param _memo A memo message forever associated with the NFT.
     function mint(string[576] memory _pixels, string memory _memo) external payable nonReentrant {
         require(msg.value >= fee, "Insufficient fee paid");
 
@@ -40,6 +81,9 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
         nonce++;
     }
 
+    /// @notice This function returns the Token URI metadata of any minted NFT.
+    /// @param _tokenId The token ID of the NFT.
+    /// @return string The metadata, in the Opensea format, of the NFT.
     function tokenURI(uint256 _tokenId) public view virtual override returns (string memory) {
         _requireMinted(_tokenId);
 
@@ -49,14 +93,16 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
         return svgHTML;
     }
 
-    receive() external payable {}
-
+    /// @notice This function allows the owner to withdraw any ETH this contract has earned.
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
 
         (bool success, ) = (owner()).call{value: balance * 1 wei}("");
-        require(success, "transfer to owner failed");
+        require(success, "Transfer to owner failed");
 
         emit WithdrawETH(balance);
     }
+
+    /// @notice This function allows the contract to recieve ETH.
+    receive() external payable {}
 }

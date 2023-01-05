@@ -133,6 +133,10 @@ describe("Pixels On Chain Testing", function () {
         });
     });
 
+    //delete template
+
+    
+
     ///////////////////////////
     //Pixels Open Edition NFT//
     ///////////////////////////
