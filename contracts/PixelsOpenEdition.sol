@@ -71,6 +71,7 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     /// @param _memo A memo message forever associated with the NFT.
     function mint(string[576] memory _pixels, string memory _memo) external payable nonReentrant {
         require(msg.value >= fee, "Insufficient fee paid");
+        require(bytes(_memo).length < 100, "Memo is too long");
 
         _safeMint(msg.sender, nonce);
         minter[nonce] = msg.sender;
