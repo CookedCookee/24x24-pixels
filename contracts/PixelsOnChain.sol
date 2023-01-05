@@ -35,7 +35,7 @@ contract PixelsOnChain is ReentrancyGuard {
         uint256[] positions;
         string[] colours;
     }
-    
+
     /// @notice An array of keys to access all templates that have been created.
     bytes32[] public templateList;
 
@@ -68,7 +68,7 @@ contract PixelsOnChain is ReentrancyGuard {
 
         require(!templateExists[keyHash], "Template already exists");
         require(_positions.length > 0, "Insuffient pixels");
-        require(_positions.length < 576, "Too many pixels");
+        require(_positions.length <= 576, "Too many pixels");
         require(_positions.length == _colours.length, "Positions and Colours array must be the same length");
 
         for (uint256 i=0; i<_positions.length; i++) {
@@ -93,6 +93,7 @@ contract PixelsOnChain is ReentrancyGuard {
     /// @param _template The key of the template.
     function deleteTemplate(uint256 _index, bytes32 _template) external nonReentrant {
         require(templateExists[_template], "Template doesn't exist");
+        require(_index < getTemplateListLength(), "Index out of bounds");
         require(templateList[_index] == _template, "Index does not correspond to template");
         require(templates[_template].author == msg.sender, "Only the author can delete this template");
 
@@ -190,7 +191,7 @@ contract PixelsOnChain is ReentrancyGuard {
 
     /// @notice This function allows for an easy way of seeing the number of templates stored in this registry.
     /// @return uint256 The length of the templateList array.
-    function getTemplateListLength() external view returns (uint256) {
+    function getTemplateListLength() public view returns (uint256) {
         return templateList.length;
     }
 

@@ -133,9 +133,100 @@ describe("Pixels On Chain Testing", function () {
         });
     });
 
-    //delete template
+    describe("Testing Delete Template", () => {
+        it("Successfully deletes a template", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
 
-    
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            
+            await deployedPixelsOnChain.connect(addy1).deleteTemplate(0, keyHash);
+
+            const numberOfTemplates = await deployedPixelsOnChain.getTemplateListLength();
+            const doesTemplateExist = await deployedPixelsOnChain.templateExists(keyHash);
+
+            expect(numberOfTemplates).to.equal(0);
+            expect(doesTemplateExist).to.equal(false);
+        });
+        it("Successfully deletes second template from three", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.connect(addy0).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy0.address]));
+            const keyHash2 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", owner.address]));
+
+            await deployedPixelsOnChain.connect(addy0).deleteTemplate(1, keyHash1);
+
+            const numberOfTemplates = await deployedPixelsOnChain.getTemplateListLength();
+            const doesTemplateExist = await deployedPixelsOnChain.templateExists(keyHash1);
+
+            expect(numberOfTemplates).to.equal(2);
+            expect(doesTemplateExist).to.equal(false);
+        });
+        it("Unsuccessfully deletes a template that doesn't exist", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My TemplateS", addy1.address]));
+            
+            await expect(deployedPixelsOnChain.connect(addy1).deleteTemplate(0, keyHash)).to.rejectedWith("Template doesn't exist");
+        });
+        it("Unsuccessfully deletes a template with index out of bounds", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.connect(addy0).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy0.address]));
+            const keyHash2 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", owner.address]));
+
+            await expect(deployedPixelsOnChain.connect(addy0).deleteTemplate(3, keyHash1)).to.rejectedWith("Index out of bounds");
+        });
+        it("Unsuccessfully deletes a template with index that doesn't correspond to key hash", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.connect(addy0).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy0.address]));
+            const keyHash2 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", owner.address]));
+
+            await expect(deployedPixelsOnChain.connect(addy0).deleteTemplate(0, keyHash1)).to.rejectedWith("Index does not correspond to template");
+        });
+        it("Unsuccessfully deletes a template by non-author", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.connect(addy0).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy0.address]));
+            const keyHash2 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", owner.address]));
+
+            await expect(deployedPixelsOnChain.deleteTemplate(1, keyHash1)).to.rejectedWith("Only the author can delete this template");
+        });
+        it("Successfully emits event after template deletion", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            
+            await expect(deployedPixelsOnChain.connect(addy1).deleteTemplate(0, keyHash)).to.emit(deployedPixelsOnChain, "templateDeleted").withArgs(keyHash, addy1.address);
+        });
+    });
+
 
     ///////////////////////////
     //Pixels Open Edition NFT//
