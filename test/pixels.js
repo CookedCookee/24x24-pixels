@@ -2,6 +2,7 @@ const { expect } = require("chai");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { ethers } = require("hardhat");
 const { BigNumber } = require("ethers");
+const { Provider } = require("@ethersproject/providers");
 
 describe("Pixels On Chain Testing", function () {
 
@@ -17,11 +18,16 @@ describe("Pixels On Chain Testing", function () {
         const Pixels = await ethers.getContractFactory("PixelsOnChain");
         const deployedPixelsOnChain = await Pixels.deploy();
 
+        //Deploy PixelsOpenEdition
+        const OpenEdition = await ethers.getContractFactory("PixelsOnChainOpenEdition");
+        const deployedOpenEdition = await OpenEdition.deploy(owner.address, deployedPixelsOnChain.address);
+
         return { 
             owner,
             addy0,
             addy1,
-            deployedPixelsOnChain
+            deployedPixelsOnChain,
+            deployedOpenEdition
         };
     }
 
@@ -227,17 +233,140 @@ describe("Pixels On Chain Testing", function () {
         });
     });
 
+    describe("Testing Other Misc Registery Functions", () => {
+        it("Unsuccessfully use overlayer on non-existant template", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.connect(addy0).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy0.address]));
+            const keyHash2 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", owner.address]));
+            const keyHash3 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template Doesn't exist", owner.address]));
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+
+            await expect(deployedPixelsOnChain.overlayer(monochrome, [keyHash0, keyHash1, keyHash3])).to.rejectedWith('Template #2 does not exist');
+        });
+        it("Unsuccessfully call getTemplateColoursArray if template doesn't exist", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template Doesn't exist", owner.address]));
+            
+            await expect(deployedPixelsOnChain.getTemplateColoursArray(keyHash1)).to.rejectedWith("Template doesn't exist");
+        });
+        it("Unsuccessfully call getTemplatePositionsArray if template doesn't exist", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain } = await loadFixture(deployEnvironment);
+
+            await deployedPixelsOnChain.connect(addy1).createTemplate("My Template", [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+
+            const keyHash0 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template", addy1.address]));
+            const keyHash1 = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], ["My Template Doesn't exist", owner.address]));
+            
+            await expect(deployedPixelsOnChain.getTemplatePositionsArray(keyHash1)).to.rejectedWith("Template doesn't exist");
+        });
+    });
 
     ///////////////////////////
     //Pixels Open Edition NFT//
     ///////////////////////////
 
-    /*
+    
     describe("Testing Open Edition", () => {
-        it("further testing", async function () {
-
+        it("All constructor variables are correct", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
             
+            const ownerOf = await deployedOpenEdition.owner();
+            const pixelsOnChain = await deployedOpenEdition.pixelsOnChain();
+            const fee = await deployedOpenEdition.fee();
+            const nonce = await deployedOpenEdition.nonce();
+
+            expect(ownerOf).to.equal(owner.address);
+            expect(pixelsOnChain).to.equal(deployedPixelsOnChain.address);
+            expect(fee).to.equal(0.001e18);
+            expect(nonce).to.equal(0);
+        });
+        it("Successfully mint an NFT", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+
+            const nonce = await deployedOpenEdition.nonce();
+            const minterOf0 = await deployedOpenEdition.minter(0);
+            const memoOf0 = await deployedOpenEdition.memo(0);
+
+            expect(nonce).to.equal(1);
+            expect(minterOf0).to.equal(addy0.address);
+            expect(memoOf0).to.equal(memo);
+
+            //Once more hardhat being annoying
+            const pixelsOf0 = await deployedOpenEdition.getEntirePixelsArray(0);
+            expect(pixelsOf0).to.eql(monochrome);
+
+            const balanceOf = await ethers.provider.getBalance(deployedOpenEdition.address);
+            expect(balanceOf).to.equal(0.001e18);
+
+            const OwnerOf0 = await deployedOpenEdition.ownerOf(0);
+            expect(OwnerOf0).to.equal(addy0.address);
+        });
+        it("Unsuccessfully mint an NFT with insufficient payment", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            await expect(deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.0001")})).to.rejectedWith("Insufficient fee paid");
+        });
+        it("Unsuccessfully mint an NFT with too long of a memo", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here,";
+            
+            await expect(deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")})).to.rejectedWith("Memo is too long");
+        });
+        it("Owner successfully withdraws ETH", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+            await deployedOpenEdition.connect(addy1).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+
+            const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
+
+            const sentTXN = await deployedOpenEdition.withdraw();
+
+            const receipt = await sentTXN.wait();
+            const cumulativeGasUsed = receipt.cumulativeGasUsed;
+            const effectiveGasPrice = receipt.effectiveGasPrice;
+            const ETHpaid = BigInt(cumulativeGasUsed) * BigInt(effectiveGasPrice);
+
+            const ownerBalanceAfter = await ethers.provider.getBalance(owner.address);
+
+            const balanceOf = await ethers.provider.getBalance(deployedOpenEdition.address);
+            expect(balanceOf).to.equal(0);
+
+            expect(BigInt(ownerBalanceAfter) + BigInt(ETHpaid) - BigInt(ownerBalanceBefore)).to.equal(0.002e18);
+        });
+        it("Non-0wner unsuccessfully withdraws ETH", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+
+            await expect(deployedOpenEdition.connect(addy0).withdraw()).to.rejectedWith("Ownable: caller is not the owner");
         });
     });
-    */
 });

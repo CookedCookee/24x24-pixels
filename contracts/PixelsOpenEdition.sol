@@ -106,4 +106,16 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
 
     /// @notice This function allows the contract to recieve ETH.
     receive() external payable {}
+
+    ////////////////////
+    //Helper Functions//
+    ////////////////////
+
+    /// @notice This function returns the pixels array for any given NFT that has been minted.
+    /// @param _tokenId The token ID of the NFT.
+    /// @return string[576] The pixels array.
+    function getEntirePixelsArray(uint256 _tokenId) public view returns (string[576] memory) {
+        require(_tokenId < nonce, "Token has not been minted");
+        return pixels[_tokenId];
+    }
 }
