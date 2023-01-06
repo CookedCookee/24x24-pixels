@@ -288,7 +288,7 @@ describe("Pixels On Chain Testing", function () {
 
             expect(ownerOf).to.equal(owner.address);
             expect(pixelsOnChain).to.equal(deployedPixelsOnChain.address);
-            expect(fee).to.equal(0.001e18);
+            expect(fee).to.equal(BigInt(0.1e18));
             expect(nonce).to.equal(0);
         });
         it("Successfully mint an NFT", async function () {
@@ -297,7 +297,7 @@ describe("Pixels On Chain Testing", function () {
             const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
             const memo = "Timmy was here";
             
-            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")});
 
             const nonce = await deployedOpenEdition.nonce();
             const minterOf0 = await deployedOpenEdition.minter(0);
@@ -312,7 +312,7 @@ describe("Pixels On Chain Testing", function () {
             expect(pixelsOf0).to.eql(monochrome);
 
             const balanceOf = await ethers.provider.getBalance(deployedOpenEdition.address);
-            expect(balanceOf).to.equal(0.001e18);
+            expect(balanceOf).to.equal(BigInt(0.1e18));
 
             const OwnerOf0 = await deployedOpenEdition.ownerOf(0);
             expect(OwnerOf0).to.equal(addy0.address);
@@ -331,7 +331,7 @@ describe("Pixels On Chain Testing", function () {
             const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
             const memo = "Timmy was here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here, and here,";
             
-            await expect(deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")})).to.rejectedWith("Memo is too long");
+            await expect(deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")})).to.rejectedWith("Memo is too long");
         });
         it("Owner successfully withdraws ETH", async function () {
             const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
@@ -339,8 +339,8 @@ describe("Pixels On Chain Testing", function () {
             const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
             const memo = "Timmy was here";
             
-            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
-            await deployedOpenEdition.connect(addy1).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")});
+            await deployedOpenEdition.connect(addy1).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")});
 
             const ownerBalanceBefore = await ethers.provider.getBalance(owner.address);
 
@@ -356,7 +356,7 @@ describe("Pixels On Chain Testing", function () {
             const balanceOf = await ethers.provider.getBalance(deployedOpenEdition.address);
             expect(balanceOf).to.equal(0);
 
-            expect(BigInt(ownerBalanceAfter) + BigInt(ETHpaid) - BigInt(ownerBalanceBefore)).to.equal(0.002e18);
+            expect(BigInt(ownerBalanceAfter) + BigInt(ETHpaid) - BigInt(ownerBalanceBefore)).to.equal(BigInt(0.2e18));
         });
         it("Non-0wner unsuccessfully withdraws ETH", async function () {
             const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
@@ -364,9 +364,43 @@ describe("Pixels On Chain Testing", function () {
             const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
             const memo = "Timmy was here";
             
-            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")});
 
             await expect(deployedOpenEdition.connect(addy0).withdraw()).to.rejectedWith("Ownable: caller is not the owner");
         });
+
+        //check for events
+
+        //also helper functions
+
+        //test gas on mint and template creation
+
+        //memory vs calldata
+
+        //write description
+
+        //change royalties?
+
+        /*
+
+        it("Owner successfully withdraws ETH", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            const sentTXN = await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+
+            const receipt = await sentTXN.wait();
+            const cumulativeGasUsed = receipt.cumulativeGasUsed;
+            const effectiveGasPrice = receipt.effectiveGasPrice;
+            const ETHpaid = BigInt(cumulativeGasUsed) * BigInt(effectiveGasPrice);
+
+            console.log(receipt);
+            console.log("ththth");
+            console.log(ETHpaid);
+
+        });
+        */
     });
 });

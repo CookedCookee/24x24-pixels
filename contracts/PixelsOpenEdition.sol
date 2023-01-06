@@ -15,8 +15,8 @@ import {IPixelsOnChain} from "../contracts/IPixelsOnChain.sol";
 ///         turning the images into NFTs. Users can mint an NFT by passing an array of pixels and a memo
 ///         to the mint function. The NFT will then be created on-chain using the Pixels On Chain registry
 ///         in the Opensea format. Minting will remain open forever; therere is no upper bound on the number
-///         of NFTs available to mint. Mint cost is 0.001 ETH and 1% of royalties are returned to the owner.
-///         No further utility will be provided after minting. 
+///         of NFTs available to mint. Mint cost is 0.1 Metis and 1% of royalties are returned to the owner.
+///         No further utility will be provided after minting.
 contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -30,7 +30,7 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     /// @notice The number of NFTs that have been minted.
     uint256 public nonce;
 
-    /// @notice The mint fee, which is 0.001 ETH.
+    /// @notice The mint fee.
     uint256 public fee;
 
     /// @notice A mapping from token IDs to minting addresses.
@@ -49,8 +49,11 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     /// @notice The token ID of an NFT when it is minted.
     event Minted(uint256 indexed tokenId);
 
-    /// @notice The amount of ETH withdrawn by the owner when the withdraw function is called.
-    event WithdrawETH(uint256 indexed amount);
+    /// @notice The amount of Metis withdrawn by the owner when the withdraw function is called.
+    event WithdrawMetis(uint256 indexed amount);
+
+    /// @notice The new fee updated by the owner when the updateFee function is called.
+    event UpdatedFee(uint256 indexed fee);
 
     ///////////////
     //Constructor//
@@ -59,7 +62,7 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     constructor(address _owner, IPixelsOnChain _pixelsOnChain) ERC721("Pixels On Chain", "POC") {
         transferOwnership(_owner);
         pixelsOnChain = _pixelsOnChain;
-        fee = 0.001e18 wei;
+        fee = 0.1e18 wei;
     }
 
     //////////////////
@@ -89,22 +92,30 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
         _requireMinted(_tokenId);
 
         string memory svgHTML = pixelsOnChain.draw(pixels[_tokenId], true);
-        svgHTML = string.concat('{"name": "#', Strings.toString(_tokenId), '", "description": "", "image": "', svgHTML, '", "attributes": [{ "trait_type": "Minter", "value": "', Strings.toHexString(minter[_tokenId]),'"}, { "trait_type": "Memo", "value": "', memo[_tokenId],'"}], "royalties": [{ "recipient": "', Strings.toHexString(address(this)),'", "percentage": 1 }]}');
+        svgHTML = string.concat('{"name": "#', Strings.toString(_tokenId), '", "description": "Pixels On Chain: Open Edition", "image": "', svgHTML, '", "attributes": [{ "trait_type": "Minter", "value": "', Strings.toHexString(minter[_tokenId]),'"}, { "trait_type": "Memo", "value": "', memo[_tokenId],'"}], "royalties": [{ "recipient": "', Strings.toHexString(address(this)),'", "percentage": 1 }]}');
         svgHTML = string.concat('data:application/json;base64,', Base64.encode(bytes(svgHTML)));
         return svgHTML;
     }
 
-    /// @notice This function allows the owner to withdraw any ETH this contract has earned.
+    /// @notice This function allows the owner to withdraw any Metis this contract has earned.
     function withdraw() external onlyOwner {
         uint256 balance = address(this).balance;
 
         (bool success, ) = (owner()).call{value: balance * 1 wei}("");
         require(success, "Transfer to owner failed");
 
-        emit WithdrawETH(balance);
+        emit WithdrawMetis(balance);
     }
 
-    /// @notice This function allows the contract to recieve ETH.
+    /// @notice This function returns the Token URI metadata of any minted NFT.
+    /// @param _fee The token ID of the NFT.
+    function changeFee(uint256 _fee) external onlyOwner {
+        require(_fee < 1e18 wei, "Fee may not exceed 1 Metis");
+        fee = _fee;
+        emit UpdatedFee(_fee);
+    }
+
+    /// @notice This function allows the contract to recieve Metis.
     receive() external payable {}
 
     ////////////////////
