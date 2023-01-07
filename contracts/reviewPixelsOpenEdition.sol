@@ -7,7 +7,7 @@ import {Strings} from "@openzeppelin/contracts/utils/Strings.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ERC721} from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import {IPixelsOnChain} from "../contracts/IPixelsOnChain.sol";
+import {IPixelsOnChain} from "../contracts/reviewIPixelsOnChain.sol";
 
 /// @title  Pixels On Chain: Open Edition
 /// @author Cooki.eth
