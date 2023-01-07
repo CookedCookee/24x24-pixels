@@ -185,7 +185,6 @@ contract PixelsOnChain is ReentrancyGuard {
         for (uint256 i=0; i<576; i++) {
             monochrome[i] = _colour;
         }
-
         return monochrome;
     }
 
