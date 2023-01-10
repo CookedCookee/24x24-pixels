@@ -2,7 +2,6 @@ const { expect } = require("chai");
 const { loadFixture } = require("@nomicfoundation/hardhat-network-helpers");
 const { ethers } = require("hardhat");
 const { BigNumber } = require("ethers");
-const { Provider } = require("@ethersproject/providers");
 
 describe("Pixels On Chain Testing", function () {
 
@@ -46,7 +45,7 @@ describe("Pixels On Chain Testing", function () {
 
             const keyHash = ethers.utils.keccak256(ethers.utils.solidityPack(["string", "address"], [name, owner.address]));
         
-            await deployedPixelsOnChain.createTemplate(name, [0, 1, 5], ["#000000", "#ffffff", "#000000"]);
+            await deployedPixelsOnChain.createTemplate(name, positions, colours);
         
             const firstTemplateKey = await deployedPixelsOnChain.templateList(0);
             expect(firstTemplateKey).to.equal(keyHash);
@@ -276,7 +275,6 @@ describe("Pixels On Chain Testing", function () {
     //Pixels Open Edition NFT//
     ///////////////////////////
 
-    
     describe("Testing Open Edition", () => {
         it("All constructor variables are correct", async function () {
             const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
@@ -368,39 +366,99 @@ describe("Pixels On Chain Testing", function () {
 
             await expect(deployedOpenEdition.connect(addy0).withdraw()).to.rejectedWith("Ownable: caller is not the owner");
         });
+        it("Owner successfully changes fee", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
 
-        //check for events
+            const fee = await deployedOpenEdition.fee();
+            expect(fee).to.equal(BigInt(0.1e18));
 
-        //also helper functions
+            await deployedOpenEdition.changeFee(BigInt(0.2e18));
 
-        //test gas on mint and template creation
+            const fee0 = await deployedOpenEdition.fee();
+            expect(fee0).to.equal(BigInt(0.2e18));
 
-        //memory vs calldata
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            await expect(deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")})).to.rejectedWith("Insufficient fee paid");
+        });
+        it("Owner unsuccessfully changes fee to be too high", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
 
-        //write description
+            const fee = await deployedOpenEdition.fee();
+            expect(fee).to.equal(BigInt(0.1e18));
 
-        //change royalties?
+            await expect(deployedOpenEdition.changeFee(BigInt(2e18))).to.rejectedWith("Fee may not exceed 1 Metis");
+        });
+        it("Non-owner unsuccessfully changes fee", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
 
-        /*
+            const fee = await deployedOpenEdition.fee();
+            expect(fee).to.equal(BigInt(0.1e18));
 
-        it("Owner successfully withdraws ETH", async function () {
+            await expect(deployedOpenEdition.connect(addy0).changeFee(BigInt(0.2e18))).to.rejectedWith("Ownable: caller is not the owner");
+        });
+        it("Successfully emits event after minting of an NFT", async function () {
             const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
 
             const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
             const memo = "Timmy was here";
             
-            const sentTXN = await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.001")});
+            await expect(deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")})).to.emit(deployedOpenEdition, "Minted").withArgs(0);
+        });
+        it("Successfully emits event after withdrawal of ETH", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")});
+
+            await expect(deployedOpenEdition.withdraw()).to.emit(deployedOpenEdition, "WithdrawMetis").withArgs(BigInt(0.1e18));
+        });
+        it("Successfully emits event after fee update", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            await expect(deployedOpenEdition.changeFee(BigInt(0.2e18))).to.emit(deployedOpenEdition, "UpdatedFee").withArgs(BigInt(0.2e18));
+        });
+    });
+    
+    /////////////
+    //Gas Usage//
+    /////////////
+
+    describe("Testing Gas Usage", () => {
+        it("Gas for creating a template with 10 pixels", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const name = 'My Template';
+            const positions = [0, 1, 5, 7, 9, 10, 11, 17, 90, 400];
+            const colours = ["#000000", "#ffffff", "#000000", "#000000", "#ffffff", "#000000", "#000000", "#ffffff", "#000000", "#000000"];
+
+            const sentTXN = await deployedPixelsOnChain.createTemplate(name, positions, colours);
 
             const receipt = await sentTXN.wait();
             const cumulativeGasUsed = receipt.cumulativeGasUsed;
             const effectiveGasPrice = receipt.effectiveGasPrice;
             const ETHpaid = BigInt(cumulativeGasUsed) * BigInt(effectiveGasPrice);
 
-            console.log(receipt);
-            console.log("ththth");
-            console.log(ETHpaid);
-
+            console.log('Cumulative Gas Used to create template with ten pixels:', BigInt(cumulativeGasUsed));
         });
-        */
+        it("Gas for minting", async function () {
+            const { owner, addy0, addy1, deployedPixelsOnChain, deployedOpenEdition } = await loadFixture(deployEnvironment);
+
+            const monochrome = await deployedPixelsOnChain.getMonochromePixelsArray("crimson");
+            const memo = "Timmy was here";
+            
+            const sentTXN = await deployedOpenEdition.connect(addy0).mint(monochrome, memo, {value: ethers.utils.parseEther("0.1")});
+
+            const receipt = await sentTXN.wait();
+            const cumulativeGasUsed = receipt.cumulativeGasUsed;
+            const effectiveGasPrice = receipt.effectiveGasPrice;
+            const ETHpaid = BigInt(cumulativeGasUsed) * BigInt(effectiveGasPrice);
+
+            //This is why it's being deployed on a rollup and not mainnet!
+            console.log('Cumulative Gas Used to Mint an NFT:', BigInt(cumulativeGasUsed));
+        });
     });
 });

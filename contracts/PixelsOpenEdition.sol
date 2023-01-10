@@ -15,8 +15,7 @@ import {IPixelsOnChain} from "../contracts/IPixelsOnChain.sol";
 ///         turning the images into NFTs. Users can mint an NFT by passing an array of pixels and a memo
 ///         to the mint function. The NFT will then be created on-chain using the Pixels On Chain registry
 ///         in the Opensea format. Minting will remain open forever; therere is no upper bound on the number
-///         of NFTs available to mint. Mint cost is 0.1 Metis and 1% of royalties are returned to the owner.
-///         No further utility will be provided after minting.
+///         of NFTs available to mint. Mint cost is 0.1 Metis. No further utility will be provided after minting.
 contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
     using SafeMath for uint256;
 
@@ -92,7 +91,7 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
         _requireMinted(_tokenId);
 
         string memory svgHTML = pixelsOnChain.draw(pixels[_tokenId], true);
-        svgHTML = string.concat('{"name": "#', Strings.toString(_tokenId), '", "description": "Pixels On Chain: Open Edition", "image": "', svgHTML, '", "attributes": [{ "trait_type": "Minter", "value": "', Strings.toHexString(minter[_tokenId]),'"}, { "trait_type": "Memo", "value": "', memo[_tokenId],'"}], "royalties": [{ "recipient": "', Strings.toHexString(address(this)),'", "percentage": 1 }]}');
+        svgHTML = string.concat('{"name": "#', Strings.toString(_tokenId), '", "description": "Pixels On Chain: Open Edition", "image": "', svgHTML, '", "attributes": [{ "trait_type": "Minter", "value": "', Strings.toHexString(minter[_tokenId]),'"}, { "trait_type": "Memo", "value": "', memo[_tokenId],'"}]}');
         svgHTML = string.concat('data:application/json;base64,', Base64.encode(bytes(svgHTML)));
         return svgHTML;
     }
@@ -107,8 +106,8 @@ contract PixelsOnChainOpenEdition is Ownable, ERC721, ReentrancyGuard {
         emit WithdrawMetis(balance);
     }
 
-    /// @notice This function returns the Token URI metadata of any minted NFT.
-    /// @param _fee The token ID of the NFT.
+    /// @notice This allows the owner to change the fee for minting an NFT. 
+    /// @param _fee The upadted fee for minting an NFT. The fee may not exceed 1 metis.
     function changeFee(uint256 _fee) external onlyOwner {
         require(_fee < 1e18 wei, "Fee may not exceed 1 Metis");
         fee = _fee;
